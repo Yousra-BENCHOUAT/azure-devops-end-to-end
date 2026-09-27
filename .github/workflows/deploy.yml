@@ -1,0 +1,21 @@
+name: Azure DevOps CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t devops-web:${{ github.sha }} ./app
+
+      - name: Test Docker image
+        run: docker run --rm devops-web:${{ github.sha }} nginx -t
