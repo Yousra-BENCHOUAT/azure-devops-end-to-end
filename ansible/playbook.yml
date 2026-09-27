@@ -33,3 +33,14 @@
         name: azureuser
         groups: docker
         append: true
+
+    - name: Install Node Exporter
+      ansible.builtin.apt:
+        name: prometheus-node-exporter
+        state: present
+
+    - name: Start and enable Node Exporter
+      ansible.builtin.service:
+        name: prometheus-node-exporter
+        state: started
+        enabled: true
