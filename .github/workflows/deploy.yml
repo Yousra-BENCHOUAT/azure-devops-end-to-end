@@ -19,3 +19,43 @@ jobs:
 
       - name: Test Docker image
         run: docker run --rm devops-web:${{ github.sha }} nginx -t
+  deploy:
+    name: Deploy to Azure VM
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy application to Azure VM
+        run: |
+          scp -i ~/.ssh/id_ed25519 -r ./app \
+          ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/home/${{ secrets.VM_USER }}/
+
+      - name: Deploy Docker container
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+          ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+
+          cd ~/app
+
+          docker build -t devops-web:${{ github.sha }} .
+
+          docker rm -f devops-web || true
+
+          docker run -d \
+            --name devops-web \
+            --restart unless-stopped \
+            -p 80:80 \
+            devops-web:${{ github.sha }}
+
+          docker ps
+          EOF
